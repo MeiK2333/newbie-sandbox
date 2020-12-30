@@ -37,6 +37,8 @@ fn main() {
     if pid < 0 {
       let err = io::Error::last_os_error().raw_os_error();
       println!("clone error: {}", errno_str(err));
+    } else {
+      println!("newbie-sandbox pid = {}", pid);
     }
     let mut status: i32 = 0;
     libc::wait4(pid, &mut status, 0, ptr::null_mut());

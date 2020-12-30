@@ -18,7 +18,3 @@ cargo build && sudo ./target/debug/newbie-sandbox /bin/bash
 nobody@nb_sandbox:/$ echo Hello World!
 Hello World!
 ```
-
-## TODO
-
-- Cgroup
