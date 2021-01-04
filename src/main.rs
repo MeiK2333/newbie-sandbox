@@ -1,4 +1,5 @@
 use libc;
+use std::convert::TryInto;
 use std::env;
 use std::ffi::CStr;
 use std::ffi::CString;
@@ -11,6 +12,8 @@ use std::os::raw::c_char;
 use std::ptr;
 use std::slice;
 use std::time::SystemTime;
+
+mod seccomp;
 
 const STACK_SIZE: usize = 1024 * 1024;
 
@@ -131,6 +134,13 @@ extern "C" fn process(args: *mut libc::c_void) -> i32 {
     libc::setgid(65534);
     libc::setuid(65534);
 
+    let filter = seccomp::SeccompFilter::new(
+      gen_rules().into_iter().collect(),
+      seccomp::SeccompAction::Allow,
+    )
+    .unwrap();
+    seccomp::SeccompFilter::apply(filter.try_into().unwrap()).unwrap();
+
     let args = args as *const *const c_char;
     let slice = slice::from_raw_parts(args, 1);
 
@@ -173,4 +183,66 @@ fn env_args() -> *const *const libc::c_char {
   let argv: *const *const libc::c_char = argv_vec.as_ptr() as *const *const libc::c_char;
   mem::forget(argv_vec);
   argv
+}
+
+fn gen_rules() -> Vec<seccomp::SyscallRuleSet> {
+  vec![
+    deny_syscall(libc::SYS_acct),
+    deny_syscall(libc::SYS_add_key),
+    deny_syscall(libc::SYS_bpf),
+    deny_syscall(libc::SYS_clock_adjtime),
+    deny_syscall(libc::SYS_clock_settime),
+    deny_syscall(libc::SYS_create_module),
+    deny_syscall(libc::SYS_delete_module),
+    deny_syscall(libc::SYS_finit_module),
+    deny_syscall(libc::SYS_get_kernel_syms),
+    deny_syscall(libc::SYS_get_mempolicy),
+    deny_syscall(libc::SYS_init_module),
+    deny_syscall(libc::SYS_ioperm),
+    deny_syscall(libc::SYS_iopl),
+    deny_syscall(libc::SYS_kcmp),
+    deny_syscall(libc::SYS_kexec_file_load),
+    deny_syscall(libc::SYS_kexec_load),
+    deny_syscall(libc::SYS_keyctl),
+    deny_syscall(libc::SYS_lookup_dcookie),
+    deny_syscall(libc::SYS_mbind),
+    deny_syscall(libc::SYS_mount),
+    deny_syscall(libc::SYS_move_pages),
+    deny_syscall(libc::SYS_name_to_handle_at),
+    deny_syscall(libc::SYS_nfsservctl),
+    deny_syscall(libc::SYS_open_by_handle_at),
+    deny_syscall(libc::SYS_perf_event_open),
+    deny_syscall(libc::SYS_personality),
+    deny_syscall(libc::SYS_pivot_root),
+    deny_syscall(libc::SYS_process_vm_readv),
+    deny_syscall(libc::SYS_process_vm_writev),
+    deny_syscall(libc::SYS_ptrace),
+    deny_syscall(libc::SYS_query_module),
+    deny_syscall(libc::SYS_quotactl),
+    deny_syscall(libc::SYS_reboot),
+    deny_syscall(libc::SYS_request_key),
+    deny_syscall(libc::SYS_set_mempolicy),
+    deny_syscall(libc::SYS_setns),
+    deny_syscall(libc::SYS_settimeofday),
+    deny_syscall(libc::SYS_swapon),
+    deny_syscall(libc::SYS_swapoff),
+    deny_syscall(libc::SYS_sysfs),
+    deny_syscall(libc::SYS__sysctl),
+    deny_syscall(libc::SYS_umount2),
+    deny_syscall(libc::SYS_unshare),
+    deny_syscall(libc::SYS_uselib),
+    deny_syscall(libc::SYS_userfaultfd),
+    deny_syscall(libc::SYS_ustat),
+  ]
+}
+
+#[inline(always)]
+fn deny_syscall(syscall_number: i64) -> seccomp::SyscallRuleSet {
+  (
+    syscall_number,
+    vec![seccomp::SeccompRule::new(
+      vec![],
+      seccomp::SeccompAction::Kill,
+    )],
+  )
 }
