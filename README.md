@@ -9,6 +9,20 @@
 ./build.sh
 ```
 
+## 启动 cgroup v2
+
+如果系统已经是 cgroup v2 则忽略此步。
+
+内核版本较老的（ < 4.15 ）请不要进行此操作，否则可能会造成系统异常
+
+```bash
+vim /etc/default/grub
+# 将参数添加至 GRUB_CMDLINE_LINUX_DEFAULT="...... cgroup_no_v1=allow systemd.unified_cgroup_hierarchy=1" 以禁用 cgroup v1
+update-grub
+# 重启以使改动生效
+reboot
+```
+
 ## Usage
 
 ```bash
