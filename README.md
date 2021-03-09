@@ -2,6 +2,13 @@
 
 菜鸡沙盒
 
+## TODO
+
+- runit
+- wait
+- cgroup v2
+- seccomp
+
 ## 初始化
 
 ```bash
