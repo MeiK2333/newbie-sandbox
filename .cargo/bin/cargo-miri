@@ -1,0 +1,2 @@
+#!/bin/bash
+$(which cargo-miri) ${@:1}

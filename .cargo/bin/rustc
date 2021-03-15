@@ -1,0 +1,6 @@
+#!/bin/bash
+if [[ " ${@} " =~ " --target " ]]; then
+  $(which rustc) ${@:1}
+else
+  $(which rustc) ${@:1} --target "x86_64-unknown-linux-gnu"
+fi

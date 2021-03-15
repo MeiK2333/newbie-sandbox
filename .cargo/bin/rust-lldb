@@ -1,0 +1,2 @@
+#!/bin/bash
+$(which rust-lldb) ${@:1}

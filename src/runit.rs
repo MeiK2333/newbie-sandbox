@@ -19,7 +19,7 @@ pub extern "C" fn runit(sandbox: *mut libc::c_void) -> i32 {
     0
 }
 
-pub fn waitit(pid: i32) -> RunnerStatus {
+pub fn wait_it(pid: i32) -> RunnerStatus {
     debug!("wait pid = {}", pid);
     let mut status: i32 = 0;
     let mut rusage = utils::new_rusage();

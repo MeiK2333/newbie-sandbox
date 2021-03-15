@@ -23,7 +23,7 @@ unsafe impl Sync for Stack {}
 const STACK_SIZE: usize = 1024 * 1024;
 
 pub struct Sandbox {
-    innter_args: Vec<String>,
+    inner_args: Vec<String>,
 }
 
 #[allow(dead_code)]
@@ -35,7 +35,7 @@ impl Sandbox {
         let mut v = vec![];
         v.extend(args);
         debug!("sandbox args = {:?}", v);
-        Sandbox { innter_args: v }
+        Sandbox { inner_args: v }
     }
     // 工作目录，如果没提供则会自动创建一个，始终会被 mount 为沙盒内部的 /tmp
     pub fn workdir() {}
@@ -45,7 +45,7 @@ impl Sandbox {
     pub fn time_limit() {}
     pub fn memory_limit() {}
     pub fn exec_args(&self) -> Result<ExecArgs> {
-        ExecArgs::build(&self.innter_args.to_vec())
+        ExecArgs::build(&self.inner_args.to_vec())
     }
 }
 
@@ -76,7 +76,7 @@ impl Runner {
             pid: -1,
             tx: Arc::new(Mutex::new(tx)),
             rx: Arc::new(Mutex::new(rx)),
-            stack: Stack { stack: stack },
+            stack: Stack { stack },
         };
         runner
     }
@@ -122,7 +122,7 @@ impl Future for Runner {
             let tx = runner.tx.clone();
             runner.pid = pid;
             thread::spawn(move || {
-                let status = runit::waitit(pid);
+                let status = runit::wait_it(pid);
                 let status_tx = tx.lock().unwrap();
                 status_tx.send(status).unwrap();
                 waker.wake();
@@ -134,7 +134,7 @@ impl Future for Runner {
     }
 }
 
-unsafe fn killpid(pid: i32) {
+unsafe fn kill_pid(pid: i32) {
     let mut status = 0;
     // > 0: 对应子进程退出但未回收资源
     // = 0: 对应子进程存在但未退出
@@ -150,7 +150,7 @@ impl Drop for Runner {
         unsafe {
             libc::munmap(self.stack.stack as *mut libc::c_void, STACK_SIZE);
             if self.pid > 0 {
-                killpid(self.pid);
+                kill_pid(self.pid);
             }
         }
     }
