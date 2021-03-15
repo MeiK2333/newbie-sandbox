@@ -30,6 +30,13 @@ macro_rules! syscall_or_panic {
     };
 }
 
+#[macro_export]
+macro_rules! c_str_ptr {
+    ($expression:expr) => {
+        std::ffi::CString::new($expression).unwrap().as_ptr()
+    };
+}
+
 /// 一个全为 `0` 的 `rusage`
 #[inline(always)]
 pub fn new_rusage() -> libc::rusage {

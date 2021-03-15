@@ -1,12 +1,11 @@
-use crate::error::Result;
-use libc;
 use std::collections::HashMap;
 use std::ffi::CString;
 use std::mem;
 use std::ptr;
 
-#[cfg(test)]
-use std::println as debug;
+use libc;
+
+use crate::error::Result;
 
 pub struct ExecArgs {
     pub pathname: *const libc::c_char,
@@ -18,7 +17,6 @@ pub struct ExecArgs {
 
 impl ExecArgs {
     pub fn build(args: &Vec<String>) -> Result<ExecArgs> {
-        debug!("args = {:?}", args);
         let pathname = args[0].clone();
         let pathname_str = try_cstr!(pathname);
         let pathname = pathname_str.as_ptr();
@@ -102,21 +100,5 @@ impl Drop for ExecArgs {
             drop(c_string);
         }
         drop(envp);
-        debug!("DROP");
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// 测试 exec args 的生成与释放内存
-    #[tokio::test]
-    async fn test_exec_args() {
-        let _exec_args = ExecArgs::build(&vec![
-            String::from("/bin/echo"),
-            String::from("Hello"),
-            String::from("World"),
-        ]);
     }
 }
