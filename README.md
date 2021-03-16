@@ -4,7 +4,6 @@
 
 ## TODO
 
-- 移除 Tokio，二进制文件无需异步支持
 - runit
 - wait
 - cgroup v1

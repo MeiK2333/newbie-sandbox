@@ -12,14 +12,18 @@ const STACK_SIZE: usize = 1024 * 1024;
 
 pub struct Sandbox {
     inner_args: Vec<String>,
-    workdir: Option<String>,
-    rootfs: String,
+    pub workdir: Option<String>,
+    pub rootfs: String,
     result: Option<String>,
+    pub result_fd: i32,
     stdin: Option<String>,
+    pub stdin_fd: i32,
     stdout: Option<String>,
+    pub stdout_fd: i32,
     stderr: Option<String>,
-    time_limit: Option<i32>,
-    memory_limit: Option<i32>,
+    pub stderr_fd: i32,
+    pub time_limit: Option<i32>,
+    pub memory_limit: Option<i32>,
 }
 
 impl Sandbox {
@@ -34,9 +38,13 @@ impl Sandbox {
             workdir: None,
             rootfs: String::from(""),
             result: None,
+            result_fd: 1,
             stdin: None,
+            stdin_fd: 0,
             stdout: None,
+            stdout_fd: 1,
             stderr: None,
+            stderr_fd: 2,
             time_limit: None,
             memory_limit: None,
         }
@@ -44,7 +52,8 @@ impl Sandbox {
     // 工作目录，如果没提供则会使用当前目录，始终会被 mount 为沙盒内部的 /tmp
     pub fn workdir(mut self, s: String) -> Self {
         if s != "/WORKDIR/" {
-            self.workdir = Some(s);
+            debug!("workdir file = {}", s);
+            self.workdir = Some(s.clone());
         }
         self
     }
@@ -54,25 +63,41 @@ impl Sandbox {
     }
     pub fn result(mut self, s: String) -> Self {
         if s != "/STDOUT/" {
-            self.result = Some(s);
+            debug!("result file = {}", s);
+            self.result = Some(s.clone());
+            self.result_fd = unsafe {
+                syscall_or_panic!(libc::open(c_str_ptr!(s), libc::O_CREAT | libc::O_RDWR, 0o644))
+            };
         }
         self
     }
     pub fn stdin(mut self, s: String) -> Self {
         if s != "/STDIN/" {
-            self.stdin = Some(s);
+            debug!("stdin file = {}", s);
+            self.stdin = Some(s.clone());
+            self.stdin_fd = unsafe {
+                syscall_or_panic!(libc::open(c_str_ptr!(s), libc::O_RDONLY, 0o644))
+            };
         }
         self
     }
     pub fn stdout(mut self, s: String) -> Self {
         if s != "/STDOUT/" {
-            self.stdout = Some(s);
+            debug!("stdout file = {}", s);
+            self.stdout = Some(s.clone());
+            self.stdout_fd = unsafe {
+                syscall_or_panic!(libc::open(c_str_ptr!(s), libc::O_CREAT | libc::O_RDWR, 0o644))
+            };
         }
         self
     }
     pub fn stderr(mut self, s: String) -> Self {
         if s != "/STDERR/" {
-            self.stderr = Some(s);
+            debug!("stderr file = {}", s);
+            self.stderr = Some(s.clone());
+            self.stderr_fd = unsafe {
+                syscall_or_panic!(libc::open(c_str_ptr!(s), libc::O_CREAT | libc::O_RDWR, 0o644))
+            };
         }
         self
     }
@@ -105,8 +130,12 @@ impl Sandbox {
                 0,
             )
         };
+        if stack == libc::MAP_FAILED {
+            let err = std::io::Error::last_os_error().raw_os_error();
+            panic!(crate::error::errno_str(err));
+        }
         let pid = unsafe {
-            libc::clone(
+            syscall_or_panic!(libc::clone(
                 runit::runit,
                 (stack as usize + STACK_SIZE) as *mut libc::c_void,
                 libc::SIGCHLD
@@ -117,11 +146,11 @@ impl Sandbox {
                     | libc::CLONE_NEWCGROUP  // 在新的 CGROUP 中创建沙盒
                     | libc::CLONE_NEWPID, // 外部进程对沙盒不可见
                 self as *mut _ as *mut libc::c_void,
-            )
+            ))
         };
         let status = wait_it(pid);
         unsafe {
-            libc::munmap(stack as *mut libc::c_void, STACK_SIZE);
+            syscall_or_panic!(libc::munmap(stack as *mut libc::c_void, STACK_SIZE));
         }
         status
     }
