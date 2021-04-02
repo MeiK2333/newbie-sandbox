@@ -12,7 +12,7 @@ const STACK_SIZE: usize = 1024 * 1024;
 
 pub struct Sandbox {
     inner_args: Vec<String>,
-    pub workdir: Option<String>,
+    pub workdir: String,
     pub rootfs: String,
     result: Option<String>,
     pub result_fd: i32,
@@ -24,18 +24,19 @@ pub struct Sandbox {
     pub stderr_fd: i32,
     pub time_limit: Option<i32>,
     pub memory_limit: Option<i32>,
+    pub file_size_limit: Option<i32>,
 }
 
 impl Sandbox {
     pub fn new(args: Vec<String>) -> Self {
         // 为什么传 String 而非 &str，因为数据最终会被 unsafe 到子进程中并且主动 forget 与 drop，如果使用 str 会导致生命周期完全混乱
         // 因此使用 String，在传递时复制而非传递地址
-        // let mut v = vec![String::from("/bin/runit")];
-        let mut v = vec![];
+        let mut v = vec![String::from("/usr/bin/runit")];
+        // let mut v = vec![];
         v.extend(args);
         Sandbox {
             inner_args: v,
-            workdir: None,
+            workdir: String::from(""),
             rootfs: String::from(""),
             result: None,
             result_fd: 1,
@@ -47,14 +48,13 @@ impl Sandbox {
             stderr_fd: 2,
             time_limit: None,
             memory_limit: None,
+            file_size_limit: None
         }
     }
     // 工作目录，如果没提供则会使用当前目录，始终会被 mount 为沙盒内部的 /tmp
     pub fn workdir(mut self, s: String) -> Self {
-        if s != "/WORKDIR/" {
-            debug!("workdir file = {}", s);
-            self.workdir = Some(s.clone());
-        }
+        debug!("workdir file = {}", s);
+        self.workdir = s.clone();
         self
     }
     pub fn rootfs(mut self, s: String) -> Self {
@@ -110,6 +110,12 @@ impl Sandbox {
     pub fn memory_limit(mut self, l: i32) -> Self {
         if l != 0 {
             self.memory_limit = Some(l);
+        }
+        self
+    }
+    pub fn file_size_limit(mut self, l: i32) -> Self {
+        if l != 0 {
+            self.file_size_limit = Some(l);
         }
         self
     }

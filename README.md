@@ -4,11 +4,9 @@
 
 ## TODO
 
-- runit
-- wait
+- 监控时间的子线程将会阻塞整体程序执行，需要考虑方案（轮训判断？信号？原生线程 + pkill？）来规避
 - cgroup v1
 - cgroup v2
-- seccomp
 
 ## 初始化
 

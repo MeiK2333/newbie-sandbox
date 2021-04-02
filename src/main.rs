@@ -11,6 +11,7 @@ mod sandbox;
 mod runit;
 mod exec_args;
 mod status;
+mod seccomp;
 
 /// example: `newbie-sandbox -- /usr/bin/echo hello world`
 #[derive(Clap)]
@@ -26,7 +27,7 @@ struct Opts {
     #[clap(short, long, default_value = "/STDERR/")]
     error: String,
     /// 工作目录，默认为当前目录
-    #[clap(short, long, default_value = "/WORKDIR/")]
+    #[clap(short, long, default_value = "./")]
     workdir: String,
     /// 沙盒所需的运行文件，必须存在
     #[clap(long, default_value = "./rootfs")]
@@ -40,6 +41,9 @@ struct Opts {
     /// 运行内存限制，单位 kib，默认无限制
     #[clap(short, long, default_value = "0")]
     memory_limit: i32,
+    /// 可写入的文件限制，单位 bit，默认无限制
+    #[clap(short, long, default_value = "0")]
+    file_size_limit: i32,
     /// 要运行的程序及命令行参数
     #[clap(setting = ArgSettings::Last, required = true)]
     command: Vec<String>,
@@ -65,11 +69,16 @@ fn main() {
         .stderr(opts.error)
         .time_limit(opts.time_limit)
         .memory_limit(opts.memory_limit)
+        .file_size_limit(opts.file_size_limit)
         .workdir(opts.workdir)
         .result(opts.result)
         .run();
 
 
-    debug!("time used   = {}", status.time_used);
-    debug!("memory used = {}", status.memory_used);
+    // 此处获取的数值为沙盒的总资源用量，我们指定进程的资源占用需要用 result 获取
+    debug!("sandbox time used   = {}", status.time_used);
+    debug!("sandbox memory used = {}", status.memory_used);
+    debug!("sandbox exit_code   = {}", status.exit_code);
+    debug!("sandbox status      = {}", status.status);
+    debug!("sandbox signal      = {}", status.signal);
 }
