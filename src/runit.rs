@@ -1,13 +1,24 @@
 use std::convert::TryInto;
 use std::ptr;
-use std::thread;
-use std::time::Duration;
+use std::{thread, time};
 
 use crate::sandbox::Sandbox;
 use crate::seccomp;
 use crate::status::RunnerStatus;
 use crate::utils;
-use std::thread::JoinHandle;
+
+extern "C" fn timer_thread(sandbox: *mut libc::c_void) -> *mut libc::c_void {
+    trace!("timer thread");
+    let sandbox = unsafe { &mut *(sandbox as *mut Sandbox) };
+
+    if let Some(time_limit) = sandbox.time_limit {
+        trace!("time limit = {}", time_limit);
+        thread::sleep(time::Duration::from_secs((time_limit / 1000 + 2) as u64));
+        unsafe { killpid(3); }
+        trace!("timer thread done");
+    }
+    ptr::null_mut()
+}
 
 pub extern "C" fn runit(sandbox: *mut libc::c_void) -> i32 {
     let sandbox = unsafe { &mut *(sandbox as *mut Sandbox) };
@@ -18,25 +29,32 @@ pub extern "C" fn runit(sandbox: *mut libc::c_void) -> i32 {
     };
     // 当前进程（沙盒内部 pid = 1）
     if pid > 0 {
+        if pid != 2 {
+            panic!("System Error!");
+        }
         // 等待进程结束之后，我们才能继续等待 3 这个进程
         // 因为在 3 的父进程没退出的时候，3 这个进程还是归 2 所有的，只有 2 退出后，3 才会作为孤儿进程被 1 接管
         let _status = wait_it(pid);
-        let mut sleep_thread: Option<JoinHandle<()>> = None;
 
-        // 在进程外监控子进程的运行时间，如果超时则 kill 掉
-        if let Some(time_limit) = sandbox.time_limit {
-            let handle = thread::spawn(move || {
-                // 此限制比 CPU 时间限制要长，防止因系统调度中断而产生的超时
-                thread::sleep(Duration::from_secs((time_limit / 1000 + 1) as u64 * 2));
-                unsafe { killpid(3); }
-            });
-            sleep_thread = Some(handle);
+        // 创建一个新线程来监听真实时间
+        let mut timer_thread_id = 0;
+        if let Some(_) = sandbox.time_limit {
+            unsafe {
+                libc::pthread_create(&mut timer_thread_id, ptr::null_mut(), timer_thread, sandbox as *mut _ as *mut libc::c_void);
+            }
         }
 
         // 得益于 Linux 的设计，我们可以使用当前进程（pid = 1）wait 沙盒内部任意孤儿进程
         // 通过三次跳转，我们能够排除掉大部分中间的影响因素，从而获取最接近准确的测量结果（代价是三个额外的进程）
         // 如果因系统异常，3 进程在 2 进程退出前就退出了，那么此处 wait 将会失败，常见原因是资源限制过小，导致无法获取运行必需的资源
         let status = wait_it(3);
+
+        // 在进程结束后取消线程
+        if timer_thread_id != 0 {
+            unsafe {
+                libc::pthread_cancel(timer_thread_id);
+            }
+        }
 
         // 此处获取的数值即为我们最终结果的数值
         debug!("time used   = {}", status.time_used);
@@ -50,8 +68,6 @@ pub extern "C" fn runit(sandbox: *mut libc::c_void) -> i32 {
 
     // 子进程（pid = 2）
     unsafe {
-        security(&sandbox);
-
         // 资源限制（使用 setrlimit）
         let mut rlimit = libc::rlimit {
             rlim_cur: 0,
@@ -78,6 +94,9 @@ pub extern "C" fn runit(sandbox: *mut libc::c_void) -> i32 {
             rlimit.rlim_max = file_size_limit as u64;
             syscall_or_panic!(libc::setrlimit(libc::RLIMIT_FSIZE, &rlimit));
         }
+
+        // 安全机制
+        security(&sandbox);
 
         // 重定向描述符
         syscall_or_panic!(libc::dup2(sandbox.stdin_fd, libc::STDIN_FILENO));

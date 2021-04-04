@@ -4,7 +4,6 @@
 
 ## TODO
 
-- 监控时间的子线程将会阻塞整体程序执行，需要考虑方案（轮训判断？信号？原生线程 + pkill？）来规避
 - cgroup v1
 - cgroup v2
 
@@ -13,6 +12,16 @@
 ```bash
 # 通过 docker 获取系统文件并复制到本地
 ./build.sh
+```
+
+## Usage
+
+```bash
+# 因为 namespaces 的限制，必须以 root 权限执行
+cargo run -- -vvv --  /bin/bash
+# 进入沙盒后进行的操作将无法影响到外部操作系统
+nobody@newbie-sandbox:/$ echo Hello World!
+Hello World!
 ```
 
 ## 启动 cgroup v2
@@ -27,14 +36,4 @@ vim /etc/default/grub
 update-grub
 # 重启以使改动生效
 reboot
-```
-
-## Usage
-
-```bash
-# 因为 namespaces 的限制，必须以 root 权限执行
-cargo build && sudo ./target/debug/newbie-sandbox /bin/bash
-# 进入沙盒后进行的操作将无法影响到外部操作系统
-nobody@nb_sandbox:/$ echo Hello World!
-Hello World!
 ```
