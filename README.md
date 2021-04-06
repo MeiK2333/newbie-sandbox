@@ -2,15 +2,11 @@
 
 菜鸡沙盒
 
-## TODO
-
-- cgroup v1
-- cgroup v2
-
 ## 初始化
 
 ```bash
 # 通过 docker 获取系统文件并复制到本地
+cd runtime
 ./build.sh
 ```
 
@@ -24,9 +20,7 @@ nobody@newbie-sandbox:/$ echo Hello World!
 Hello World!
 ```
 
-## 启动 cgroup v2
-
-如果系统已经是 cgroup v2 则忽略此步。
+## 切换为 cgroup v2
 
 内核版本较老的（ < 4.15 ）请不要进行此操作，否则可能会造成系统异常
 

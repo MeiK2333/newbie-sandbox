@@ -1,0 +1,1 @@
+char magic[-1u] = {'\n'};

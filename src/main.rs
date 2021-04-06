@@ -12,6 +12,7 @@ mod runit;
 mod exec_args;
 mod status;
 mod seccomp;
+mod cgroups;
 
 /// example: `newbie-sandbox -- /usr/bin/echo hello world`
 #[derive(Clap)]
@@ -30,7 +31,7 @@ struct Opts {
     #[clap(short, long, default_value = "./")]
     workdir: String,
     /// 沙盒所需的运行文件，必须存在
-    #[clap(long, default_value = "./rootfs")]
+    #[clap(long, default_value = "./runtime/rootfs")]
     rootfs: String,
     /// 运行结果输出位置，默认为 STDOUT(1)
     #[clap(short, long, default_value = "/STDOUT/")]
@@ -44,6 +45,12 @@ struct Opts {
     /// 可写入的文件限制，单位 bit，默认无限制
     #[clap(short, long, default_value = "0")]
     file_size_limit: i32,
+    /// cgroup 版本，1 或 2
+    #[clap(short, long, default_value = "1")]
+    cgroup: i32,
+    /// 最大可创建的 pid 数量，默认无限制
+    #[clap(short, long, default_value = "0")]
+    pids: i32,
     /// 要运行的程序及命令行参数
     #[clap(setting = ArgSettings::Last, required = true)]
     command: Vec<String>,
@@ -70,6 +77,8 @@ fn main() {
         .time_limit(opts.time_limit)
         .memory_limit(opts.memory_limit)
         .file_size_limit(opts.file_size_limit)
+        .cgroup(opts.cgroup)
+        .pids(opts.pids)
         .workdir(opts.workdir)
         .result(opts.result)
         .run();

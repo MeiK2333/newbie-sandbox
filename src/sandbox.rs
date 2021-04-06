@@ -2,6 +2,7 @@ use std::ptr;
 
 use libc;
 
+use crate::cgroups::{CGroup, CGroupOptions};
 use crate::error::Result;
 use crate::exec_args::ExecArgs;
 use crate::runit;
@@ -25,6 +26,8 @@ pub struct Sandbox {
     pub time_limit: Option<i32>,
     pub memory_limit: Option<i32>,
     pub file_size_limit: Option<i32>,
+    pub cgroup: i32,
+    pub pids: i32,
 }
 
 impl Sandbox {
@@ -48,7 +51,9 @@ impl Sandbox {
             stderr_fd: 2,
             time_limit: None,
             memory_limit: None,
-            file_size_limit: None
+            file_size_limit: None,
+            cgroup: 1,
+            pids: 0,
         }
     }
     // 工作目录，如果没提供则会使用当前目录，始终会被 mount 为沙盒内部的 /tmp
@@ -119,6 +124,18 @@ impl Sandbox {
         }
         self
     }
+    pub fn cgroup(mut self, l: i32) -> Self {
+        if l != 1 && l != 2 {
+            self.cgroup = l;
+        }
+        self
+    }
+    pub fn pids(mut self, l: i32) -> Self {
+        if l > 0 {
+            self.pids = l;
+        }
+        self
+    }
     pub fn exec_args(&self) -> Result<ExecArgs> {
         ExecArgs::build(&self.inner_args)
     }
@@ -126,6 +143,12 @@ impl Sandbox {
 
 impl Sandbox {
     pub fn run(&mut self) -> RunnerStatus {
+        let pids = if self.pids > 0 { self.pids + 3 } else { 0 };
+        let options = CGroupOptions {
+            version: 2,
+            pids,
+        };
+        let cgroup = CGroup::apply(options).unwrap();
         let stack = unsafe {
             libc::mmap(
                 ptr::null_mut(),
@@ -154,9 +177,11 @@ impl Sandbox {
                 self as *mut _ as *mut libc::c_void,
             ))
         };
+        debug!("run sandbox pid = {}", pid);
         let status = wait_it(pid);
         unsafe {
             syscall_or_panic!(libc::munmap(stack as *mut libc::c_void, STACK_SIZE));
+            drop(cgroup);
         }
         status
     }

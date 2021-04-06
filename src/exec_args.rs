@@ -41,6 +41,8 @@ impl ExecArgs {
             "/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
         );
         envs.insert("HOME", "/tmp");
+        envs.insert("RUSTUP_HOME", "/root/.rustup");
+        envs.insert("CARGO_HOME", "/root/.cargo");
         envs.insert("TERM", "xterm");
         let mut envp_vec: Vec<*const libc::c_char> = vec![];
         for (key, value) in envs {
