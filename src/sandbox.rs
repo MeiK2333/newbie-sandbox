@@ -125,7 +125,7 @@ impl Sandbox {
         self
     }
     pub fn cgroup(mut self, l: i32) -> Self {
-        if l != 1 && l != 2 {
+        if l == 1 || l == 2 {
             self.cgroup = l;
         }
         self
@@ -145,7 +145,7 @@ impl Sandbox {
     pub fn run(&mut self) -> RunnerStatus {
         let pids = if self.pids > 0 { self.pids + 3 } else { 0 };
         let options = CGroupOptions {
-            version: 2,
+            version: self.cgroup,
             pids,
         };
         let cgroup = CGroup::apply(options).unwrap();
