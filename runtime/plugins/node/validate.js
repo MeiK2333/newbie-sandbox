@@ -11,12 +11,10 @@ try {
         for (const error of res.errors) {
             displayError(code, error);
         }
-        process.exit(1);
     }
 } catch (error) {
     displayError(code, error);
 }
-process.exit(0);
 
 function displayError(code, error) {
     const split = code.split('\n');
@@ -28,4 +26,5 @@ function displayError(code, error) {
     console.error(`${error.toString()}
     at (${file}:${error.lineNumber}:${error.column})`);
     console.error('--------------------------------------------------------------------------');
+    process.exit(1);
 }
