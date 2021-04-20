@@ -54,7 +54,7 @@ RUN apt-get install -y wget && \
     apt-get install -y dotnet-sdk-5.0
 
 # install php
-RUN add-apt-repository -y ppa:ondrej/php && apt-get install php8.0-fpm
+RUN add-apt-repository -y ppa:ondrej/php && apt-get install -y php8.0-fpm
 
 # install ruby
 RUN apt-get install -y ruby-full
