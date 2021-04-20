@@ -14,7 +14,9 @@ extern "C" fn timer_thread(sandbox: *mut libc::c_void) -> *mut libc::c_void {
     if let Some(time_limit) = sandbox.time_limit {
         trace!("time limit = {}", time_limit);
         thread::sleep(time::Duration::from_secs((time_limit / 1000 + 2) as u64));
-        unsafe { killpid(3); }
+        unsafe {
+            killpid(3);
+        }
         trace!("timer thread done");
     }
     ptr::null_mut()
@@ -24,9 +26,7 @@ pub extern "C" fn runit(sandbox: *mut libc::c_void) -> i32 {
     let sandbox = unsafe { &mut *(sandbox as *mut Sandbox) };
     let exec_args = sandbox.exec_args().unwrap();
 
-    let pid = unsafe {
-        syscall_or_panic!(libc::fork())
-    };
+    let pid = unsafe { syscall_or_panic!(libc::fork()) };
     // 当前进程（沙盒内部 pid = 1）
     if pid > 0 {
         if pid != 2 {
@@ -40,7 +40,12 @@ pub extern "C" fn runit(sandbox: *mut libc::c_void) -> i32 {
         let mut timer_thread_id = 0;
         if let Some(_) = sandbox.time_limit {
             unsafe {
-                libc::pthread_create(&mut timer_thread_id, ptr::null_mut(), timer_thread, sandbox as *mut _ as *mut libc::c_void);
+                libc::pthread_create(
+                    &mut timer_thread_id,
+                    ptr::null_mut(),
+                    timer_thread,
+                    sandbox as *mut _ as *mut libc::c_void,
+                );
             }
         }
 
@@ -84,8 +89,8 @@ pub extern "C" fn runit(sandbox: *mut libc::c_void) -> i32 {
         }
         // 内存限制，单位为 kib
         if let Some(memory_limit) = sandbox.memory_limit {
-            rlimit.rlim_cur = (memory_limit * 1024 * 2) as u64;
-            rlimit.rlim_max = (memory_limit * 1024 * 2) as u64;
+            rlimit.rlim_cur = memory_limit as u64 * 1024 * 2;
+            rlimit.rlim_max = memory_limit as u64 * 1024 * 2;
             syscall_or_panic!(libc::setrlimit(libc::RLIMIT_AS, &rlimit));
         }
         // 文件大小限制，单位为 bit
@@ -118,9 +123,7 @@ pub extern "C" fn runit(sandbox: *mut libc::c_void) -> i32 {
 pub fn wait_it(pid: i32) -> RunnerStatus {
     let mut status: i32 = 0;
     let mut rusage = utils::new_rusage();
-    let _ret = unsafe {
-        syscall_or_panic!(libc::wait4(pid, &mut status, 0, &mut rusage))
-    };
+    let _ret = unsafe { syscall_or_panic!(libc::wait4(pid, &mut status, 0, &mut rusage)) };
     let time_used = rusage.ru_utime.tv_sec * 1000
         + i64::from(rusage.ru_utime.tv_usec) / 1000
         + rusage.ru_stime.tv_sec * 1000
@@ -152,10 +155,7 @@ unsafe fn security(sandbox: &Sandbox) {
     // 全局默认权限 755，为运行目录设置特权
     // 因为将会使用 nobody 用户来执行程序，如果没有运行目录 777 权限，将会无法正常工作
     trace!("chmod {} 777", sandbox.workdir);
-    syscall_or_panic!(libc::chmod(
-        c_str_ptr!(sandbox.workdir.clone()),
-        0o777,
-    ));
+    syscall_or_panic!(libc::chmod(c_str_ptr!(sandbox.workdir.clone()), 0o777,));
     // 等同于 mount --make-rprivate /
     // 不将挂载传播到其他空间，以免造成挂载混淆
     syscall_or_panic!(libc::mount(
@@ -201,10 +201,9 @@ unsafe fn security(sandbox: &Sandbox) {
         deny_syscalls().into_iter().collect(),
         seccomp::SeccompAction::Allow,
     )
-        .unwrap();
+    .unwrap();
     seccomp::SeccompFilter::apply(filter.try_into().unwrap()).unwrap();
 }
-
 
 /// 阻止危险的系统调用
 ///
