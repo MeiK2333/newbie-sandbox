@@ -44,14 +44,12 @@ RUN add-apt-repository -y ppa:longsleep/golang-backports && \
 # install openjdk
 RUN apt-get install -y default-jdk
 
-# install c#
-RUN apt-get install -y wget && \
-    wget https://packages.microsoft.com/config/ubuntu/20.10/packages-microsoft-prod.deb -O packages-microsoft-prod.deb && \
-    dpkg -i packages-microsoft-prod.deb && \
-    apt-get update && \
-    apt-get install -y apt-transport-https && \
-    apt-get update && \
-    apt-get install -y dotnet-sdk-5.0
+# install c#(mono)
+RUN apt-get install -y gnupg ca-certificates && \
+    apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF && \
+    echo "deb https://download.mono-project.com/repo/ubuntu stable-focal main" | tee /etc/apt/sources.list.d/mono-official-stable.list && \
+    apt update && \
+    apt-get install -y mono-devel
 
 # install php
 RUN add-apt-repository -y ppa:ondrej/php && apt-get install -y php8.0-fpm
