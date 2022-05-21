@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate log;
 
-use clap::{ArgSettings, Clap};
+use clap::{ArgSettings, Parser};
 use env_logger::Builder;
 use log::LevelFilter;
 
@@ -15,7 +15,7 @@ mod seccomp;
 mod cgroups;
 
 /// example: `newbie-sandbox -- /usr/bin/echo hello world`
-#[derive(Clap)]
+#[derive(Parser)]
 #[clap(version = "1.0", author = "MeiK <meik2333@gmail.com>")]
 struct Opts {
     /// 输入流，默认为 STDIN(0)
