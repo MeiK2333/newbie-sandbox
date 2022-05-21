@@ -6,7 +6,7 @@ macro_rules! try_io {
         match $expression {
             Ok(val) => val,
             Err(e) => return Err(crate::error::Error::IOError(e)),
-        };
+        }
     };
 }
 
@@ -16,7 +16,7 @@ macro_rules! try_cstr {
         match CString::new($expression) {
             Ok(value) => value,
             Err(err) => return Err(crate::error::Error::StringToCStringError(err)),
-        };
+        }
     };
 }
 
