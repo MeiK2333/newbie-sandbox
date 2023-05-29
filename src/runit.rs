@@ -92,6 +92,10 @@ pub extern "C" fn runit(sandbox: *mut libc::c_void) -> i32 {
             rlimit.rlim_cur = memory_limit as u64 * 1024 * 2;
             rlimit.rlim_max = memory_limit as u64 * 1024 * 2;
             syscall_or_panic!(libc::setrlimit(libc::RLIMIT_AS, &rlimit));
+
+            rlimit.rlim_cur = memory_limit as u64 * 1024 * 2;
+            rlimit.rlim_max = memory_limit as u64 * 1024 * 2;
+            syscall_or_panic!(libc::setrlimit(libc::RLIMIT_STACK, &rlimit));
         }
         // 文件大小限制，单位为 bit
         if let Some(file_size_limit) = sandbox.file_size_limit {
@@ -246,6 +250,7 @@ fn deny_syscalls() -> Vec<seccomp::SyscallRuleSet> {
         deny_syscall(libc::SYS_request_key),
         deny_syscall(libc::SYS_set_mempolicy),
         deny_syscall(libc::SYS_setns),
+        deny_syscall(libc::SYS_setrlimit),
         deny_syscall(libc::SYS_settimeofday),
         deny_syscall(libc::SYS_swapon),
         deny_syscall(libc::SYS_swapoff),
